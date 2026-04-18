@@ -1,0 +1,10 @@
+# Vercel deploy is pure static from public/ — keep everything else out of the build.
+scripts/
+data/
+viewer/
+requirements.txt
+__pycache__/
+*.py
+*.pyc
+.venv/
+venv/
