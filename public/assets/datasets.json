@@ -1,0 +1,56 @@
+{
+  "bike_crashes": {
+    "label": "Cyclist-involved crashes 2018\u20132024",
+    "slug": "hechos-de-transito-registrados-por-la-ssc-2024-serie-de-datos-ampliada-no-comparativa",
+    "source": "SSC \u2014 Secretar\u00eda de Seguridad Ciudadana",
+    "url": "https://datos.cdmx.gob.mx/dataset/hechos-de-transito-registrados-por-la-ssc-2024-serie-de-datos-ampliada-no-comparativa",
+    "n": 11981
+  },
+  "fgj_accidentes": {
+    "label": "FGJ cyclist accident points 2019",
+    "slug": "puntos-de-accidentes-de-ciclistas",
+    "source": "FGJ \u2014 Fiscal\u00eda General de Justicia",
+    "url": "https://datos.cdmx.gob.mx/dataset/puntos-de-accidentes-de-ciclistas",
+    "n": 686
+  },
+  "motor_crashes": {
+    "label": "All-vehicle crashes 2018\u20132024",
+    "slug": "hechos-de-transito-reportados-por-ssc-base-ampliada-no-comparativa",
+    "source": "SSC",
+    "url": "https://datos.cdmx.gob.mx/dataset/hechos-de-transito-reportados-por-ssc-base-ampliada-no-comparativa",
+    "n": 164613
+  },
+  "bike_infra": {
+    "label": "CDMX bike infrastructure (580.7 km)",
+    "slug": "infraestructura-vial-ciclista",
+    "source": "SEMOVI \u2014 Secretar\u00eda de Movilidad",
+    "url": "https://datos.cdmx.gob.mx/dataset/infraestructura-vial-ciclista",
+    "n": 651
+  },
+  "ecobici_stations": {
+    "label": "Ecobici stations (active)",
+    "slug": "cicloestaciones-ecobici-nuevo-sistema",
+    "source": "SEMOVI \u2014 Ecobici",
+    "url": "https://datos.cdmx.gob.mx/dataset/cicloestaciones-ecobici-nuevo-sistema",
+    "n": 677
+  },
+  "ecobici_afluencia": {
+    "label": "Ecobici trip volume 2010\u20132024",
+    "slug": "afluencia-diaria-del-sistema-ecobici",
+    "source": "SEMOVI \u2014 Ecobici",
+    "url": "https://datos.cdmx.gob.mx/dataset/afluencia-diaria-del-sistema-ecobici",
+    "n": 103845266
+  },
+  "osm": {
+    "label": "Bike-usable road network",
+    "source": "OpenStreetMap",
+    "url": "https://www.openstreetmap.org",
+    "n": null
+  },
+  "brouter": {
+    "label": "Bike routing engine",
+    "source": "brouter.de",
+    "url": "https://brouter.de",
+    "n": null
+  }
+}

@@ -31,6 +31,22 @@ python scripts/score_citywide_edges.py # 2–3 min, writes viewer/osm_scored.geo
 
 Reload the page; the whole map is now coloured.
 
+## Deploy as a static site (Vercel)
+
+No Python backend needed at runtime — scoring is done client-side off a pre-baked
+200 m grid. One build step, then static files only.
+
+```bash
+python scripts/bootstrap.py            # once, to get raw data
+python scripts/build_static_site.py    # bakes public/ (grid + assets + index.html)
+# then, from the repo root:
+vercel --prod                          # or link once and push to main → auto-deploy
+```
+
+The `public/` directory is self-contained: `index.html` + `app.js` + `assets/` (grids and layer JSON). Each route scoring round-trip is: brouter.de (bike routing, CORS) + bilinear sample of the local grid. Zero backend cost.
+
+See `public/` after running the build. The grid meta (`public/assets/grid_meta.json`) pins the bake timestamp for auditability.
+
 ## What it does
 
 Given a start and end in CDMX:

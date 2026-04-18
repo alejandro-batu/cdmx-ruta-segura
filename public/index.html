@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Ruta Segura CDMX — cycling safety</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="Paste a bike route in CDMX and see how safe it is. Built on 12k cyclist crashes, 165k all-vehicle crashes, 580km of bike infrastructure, and 677 Ecobici stations." />
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+  <style>
+    :root {
+      --c-bg: #f5f5f7; --c-card: #fff; --c-border: #e5e5ea;
+      --c-text: #1d1d1f; --c-muted: #6e6e73;
+      --c-accent: #2b8a3e; --c-accent-h: #238538;
+      --c-danger: #b10026; --c-mid: #d9480f; --c-ok: #2b8a3e;
+      --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.04);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: var(--c-text); background: var(--c-bg); }
+    .app { display: grid; grid-template-columns: 380px 1fr; height: 100vh; }
+    @media (max-width: 800px) { .app { grid-template-columns: 1fr; grid-template-rows: auto 1fr; } main { min-height: 50vh; } }
+    aside { background: var(--c-card); border-right: 1px solid var(--c-border); display: flex; flex-direction: column; overflow: hidden; }
+    header { padding: 14px 18px 12px; border-bottom: 1px solid var(--c-border); }
+    header h1 { margin: 0; font-size: 17px; font-weight: 600; }
+    header .subtitle { margin-top: 2px; font-size: 12px; color: var(--c-muted); }
+    nav.tabs { display: flex; border-bottom: 1px solid var(--c-border); flex-shrink: 0; }
+    nav.tabs button { flex: 1; padding: 10px 8px; border: 0; background: transparent; font: inherit; font-size: 13px; color: var(--c-muted); cursor: pointer; border-bottom: 2px solid transparent; }
+    nav.tabs button.active { color: var(--c-text); border-bottom-color: var(--c-accent); font-weight: 600; }
+    nav.tabs button:hover { background: #fafafa; }
+    .tab-body { flex: 1; overflow: auto; padding: 14px 18px; }
+    .tab-body[hidden] { display: none; }
+
+    .field { margin-bottom: 12px; }
+    .field label { font-size: 12px; color: var(--c-muted); display: block; margin-bottom: 4px; font-weight: 500; }
+    .field input[type="text"] { width: 100%; padding: 8px 10px; font: inherit; font-size: 13px; border: 1px solid var(--c-border); border-radius: 6px; background: #fff; }
+    .field input:focus { outline: none; border-color: var(--c-accent); box-shadow: 0 0 0 3px rgba(43,138,62,.15); }
+
+    .row { display: flex; gap: 8px; }
+    button.btn { padding: 8px 14px; font: inherit; font-size: 13px; font-weight: 500; border: 1px solid var(--c-border); border-radius: 6px; background: #fafafa; cursor: pointer; color: var(--c-text); }
+    button.btn:hover { background: #eee; }
+    button.btn.primary { background: var(--c-accent); color: white; border-color: var(--c-accent); }
+    button.btn.primary:hover { background: var(--c-accent-h); }
+    button.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    .hint { font-size: 11px; color: var(--c-muted); margin-top: 4px; }
+
+    .card { background: #fafafa; border: 1px solid var(--c-border); border-radius: 8px; padding: 12px 14px; margin-top: 14px; }
+    .card h3 { margin: 0 0 10px; font-size: 13px; font-weight: 600; color: var(--c-muted); text-transform: uppercase; letter-spacing: .03em; }
+    .kpi { font-size: 32px; font-weight: 600; line-height: 1; }
+    .kpi.good { color: var(--c-ok); } .kpi.mid { color: var(--c-mid); } .kpi.bad { color: var(--c-danger); }
+    .kpi-label { font-size: 12px; color: var(--c-muted); margin-top: 4px; }
+    .stat-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; }
+    .stat-row span:last-child { font-weight: 500; color: var(--c-text); }
+
+    .bar { height: 8px; display: flex; border-radius: 4px; overflow: hidden; margin: 8px 0 6px; }
+    .bar > div { height: 100%; }
+    .badges { display: flex; gap: 4px; flex-wrap: wrap; }
+    .badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; color: white; font-weight: 500; }
+
+    .toggles { display: flex; flex-direction: column; gap: 8px; }
+    .toggle { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; background: #fafafa; border: 1px solid var(--c-border); border-radius: 6px; font-size: 13px; }
+    .toggle input[type="checkbox"] { margin-left: 8px; }
+
+    .about-section { margin-bottom: 16px; font-size: 13px; line-height: 1.55; }
+    .about-section h4 { margin: 0 0 6px; font-size: 13px; }
+    .about-section ul { margin: 4px 0; padding-left: 18px; }
+    .about-section li { margin: 4px 0; }
+    .about-section code { background: #eef; padding: 1px 5px; border-radius: 3px; font-size: 11px; font-family: "SF Mono", Menlo, monospace; }
+    .about-section a { color: var(--c-accent); text-decoration: none; }
+    .about-section a:hover { text-decoration: underline; }
+    .ds-item { border-left: 3px solid var(--c-border); padding: 4px 0 4px 10px; margin: 6px 0; }
+    .ds-item b { display: block; font-size: 12.5px; }
+    .ds-item span { font-size: 11.5px; color: var(--c-muted); }
+    .ds-item a { font-size: 11.5px; }
+
+    main { position: relative; }
+    #map { position: absolute; inset: 0; }
+
+    .legend { position: absolute; bottom: 16px; left: 16px; background: var(--c-card); border-radius: 8px; padding: 10px 12px; font-size: 11px; box-shadow: var(--shadow); border: 1px solid var(--c-border); }
+    .legend b { display: block; margin-bottom: 4px; font-size: 12px; }
+    .swatch { display: inline-block; width: 14px; height: 4px; margin-right: 6px; vertical-align: middle; border-radius: 2px; }
+    .station-dot { display: inline-block; width: 8px; height: 8px; background: #1971c2; border-radius: 50%; margin-right: 6px; vertical-align: middle; border: 1.5px solid #fff; box-shadow: 0 0 2px rgba(0,0,0,.4); }
+
+    .toast { position: absolute; top: 16px; right: 16px; background: #fff4e6; border: 1px solid #ffc078; color: #8a4f00; padding: 10px 14px; border-radius: 8px; font-size: 12px; box-shadow: var(--shadow); max-width: 300px; display: none; }
+
+    .info-link { font-size: 11px; color: var(--c-accent); cursor: pointer; text-decoration: underline; margin-top: 6px; display: inline-block; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside>
+      <header>
+        <h1>Ruta Segura CDMX</h1>
+        <div class="subtitle">Cycling safety scorer · static build</div>
+      </header>
+      <nav class="tabs">
+        <button data-tab="route" class="active">Route</button>
+        <button data-tab="layers">Layers</button>
+        <button data-tab="stats">Stats</button>
+        <button data-tab="about">About</button>
+      </nav>
+
+      <div class="tab-body" data-tab="route">
+        <div class="hint">Type lat,lng — or click the map twice. Or paste a Google Maps URL and we'll extract the coordinates.</div>
+        <div class="field" style="margin-top:10px">
+          <label>From (lat, lng)</label>
+          <input id="start" type="text" placeholder="19.415, -99.165" />
+        </div>
+        <div class="field">
+          <label>To (lat, lng)</label>
+          <input id="end" type="text" placeholder="19.425, -99.155" />
+        </div>
+        <div class="field">
+          <label>Or paste Google Maps link</label>
+          <input id="gmaps" type="text" placeholder="https://www.google.com/maps/dir/..." />
+        </div>
+        <div class="row">
+          <button id="go" class="btn primary" style="flex:1">Route &amp; score</button>
+          <button id="clear" class="btn">Clear</button>
+        </div>
+        <div id="summary" style="display:none"></div>
+      </div>
+
+      <div class="tab-body" data-tab="layers" hidden>
+        <div class="toggles">
+          <label class="toggle">
+            <span>Ecobici stations</span>
+            <input id="tg-stations" type="checkbox" checked />
+          </label>
+          <label class="toggle">
+            <span>Crash heatmap (12.7k points)</span>
+            <input id="tg-heat" type="checkbox" />
+          </label>
+          <label class="toggle">
+            <span>Fatal crashes only</span>
+            <input id="tg-fatal" type="checkbox" />
+          </label>
+          <label class="toggle">
+            <span>Safety-score grid</span>
+            <input id="tg-grid" type="checkbox" />
+          </label>
+        </div>
+        <div class="hint" style="margin-top:12px">Routes are scored anywhere in CDMX against the pre-baked 200 m grid.</div>
+      </div>
+
+      <div class="tab-body" data-tab="stats" hidden>
+        <div id="kpis-loading" class="hint">Loading…</div>
+        <div id="kpis" style="display:none">
+          <div class="card">
+            <h3>Ecobici system</h3>
+            <div class="kpi good" id="kpi-trips">—</div>
+            <div class="kpi-label">total trips 2010–2024</div>
+            <div style="margin-top:14px">
+              <div class="stat-row"><span>Last 30 days</span><span id="kpi-30">—</span></div>
+              <div class="stat-row"><span>Daily avg (recent)</span><span id="kpi-daily">—</span></div>
+              <div class="stat-row"><span>Active stations</span><span id="kpi-stations">—</span></div>
+              <div class="stat-row"><span>Date range</span><span id="kpi-range">—</span></div>
+            </div>
+          </div>
+          <div class="card"><h3>Rider mix (all time)</h3><div id="kpi-gender"></div></div>
+          <div class="card"><h3>Trips by year</h3><div id="kpi-years" style="font-size: 12px;"></div></div>
+          <div class="card">
+            <h3>Safety data</h3>
+            <div class="stat-row"><span>Cyclist crashes 2018–2024</span><span>11,981</span></div>
+            <div class="stat-row"><span>FGJ cyclist points 2019</span><span>686</span></div>
+            <div class="stat-row"><span>All-vehicle crashes</span><span>164,613</span></div>
+            <div class="stat-row"><span>Bike infrastructure</span><span>580.7 km</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-body" data-tab="about" hidden>
+        <div class="about-section">
+          <h4>What this is</h4>
+          A cycling safety score for anywhere in CDMX. You give a start and end; we route a bike trip through brouter and score each 50 m of it against crash density, bike infrastructure, and Ecobici station coverage.
+        </div>
+
+        <div class="about-section">
+          <h4>How the score is built</h4>
+          For every ~50 m along your route:
+          <ol style="padding-left: 18px; margin: 6px 0;">
+            <li><b>Cyclist-crash risk</b> — KDE of 12,667 cyclist crash points (150 m bw, fatals ×5), divided by citywide P95.</li>
+            <li><b>Motor-vehicle risk</b> — KDE of 164,613 all-vehicle crashes, same normalization. Captures road danger where cyclists are rare.</li>
+            <li><b>Blend</b>: <code>0.7 × cyclist + 0.3 × motor</code>.</li>
+            <li><b>Infra multiplier</b> — nearest bike lane within 30 m: <code>×0.50</code> Ciclovía confinada · <code>×0.65–0.85</code> other bike infra · <b><code>×1.70</code> no lane</b>.</li>
+            <li><b>Station multiplier</b> — <code>×1.0</code> within 300 m of an Ecobici station, ramping to <code>×1.50</code> beyond 1.5 km.</li>
+            <li><b>Weighted risk</b> = blended risk × infra_mult × station_mult.</li>
+            <li><b>Score</b> = <code>100 × (1 − clip(weighted, 0, 1))</code>.</li>
+            <li><b>Caps</b>: no infra + far from stations → max 55. No infra only → max 75. Prevents "no one rides here because it's unrideable" from looking safe.</li>
+            <li><b>Low-data warning</b> when &lt; 10 cyclist crashes are within 200 m of the route.</li>
+          </ol>
+          <div style="font-size: 11px; color: var(--c-muted); margin-top:8px">
+            The surface is pre-computed on a 200 m grid at bake time. Your browser does bilinear interpolation along the route — identical math to the Python version, orders of magnitude faster.
+          </div>
+        </div>
+
+        <div class="about-section">
+          <h4>Data sources</h4>
+          <div id="data-sources">loading…</div>
+        </div>
+
+        <div class="about-section">
+          <h4>Known limits</h4>
+          <ul>
+            <li>No ridership normalisation — Ecobici doesn't publish OD pairs. Peripheral zones may look safer than they are; the score caps are the current mitigation.</li>
+            <li>brouter's <code>fastbike</code> profile picks the route; we score what it returns, we don't yet prefer safer routes.</li>
+            <li>FGJ data frozen at 2019; SSC dominates 2020–2024.</li>
+            <li>KDE bandwidth (150 m), motor blend (0.3), infra/station multipliers, and score caps are hand-tuned, not learned.</li>
+            <li>Grid quantisation adds ±0.3 points of noise vs. the continuous Python version — indistinguishable in practice.</li>
+          </ul>
+        </div>
+
+        <div class="about-section">
+          <h4>Source</h4>
+          <a href="https://github.com/alejandro-batu/cdmx-ruta-segura" target="_blank" rel="noopener">github.com/alejandro-batu/cdmx-ruta-segura</a>
+        </div>
+      </div>
+    </aside>
+
+    <main>
+      <div id="map"></div>
+      <div class="legend">
+        <b>Safety score</b>
+        <div><span class="swatch" style="background:#b10026"></span>0–25 · dangerous</div>
+        <div><span class="swatch" style="background:#fc4e2a"></span>25–50 · risky</div>
+        <div><span class="swatch" style="background:#feb24c"></span>50–75 · ok</div>
+        <div><span class="swatch" style="background:#41ab5d"></span>75–100 · safe</div>
+        <div style="margin-top:6px"><span class="station-dot"></span>Ecobici station</div>
+      </div>
+      <div id="toast" class="toast"></div>
+    </main>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

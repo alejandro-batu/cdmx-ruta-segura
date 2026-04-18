@@ -1,0 +1,27 @@
+{
+  "bbox_wgs84": [
+    -99.35,
+    19.2,
+    -98.95,
+    19.6
+  ],
+  "bbox_utm_m": [
+    463206.5915518492,
+    2122994.2082073647,
+    505243.346216805,
+    2167219.0650815214
+  ],
+  "nx": 210,
+  "ny": 221,
+  "cell_m": 200,
+  "utm_epsg": "EPSG:32614",
+  "row_order": "south_to_north",
+  "endianness": "little",
+  "grids": {
+    "score_grid.bin": "float32, final 0-100 score, shape (ny, nx)",
+    "has_infra_grid.bin": "uint8 0/1, bike infra within 30m",
+    "station_dist_grid.bin": "float32 meters to nearest Ecobici station (9999 if none)",
+    "crash_count_grid.bin": "uint16 cyclist crashes 2018-2024 within 200m of cell center"
+  },
+  "generated_at": "2026-04-18T23:37:39.703431+00:00"
+}

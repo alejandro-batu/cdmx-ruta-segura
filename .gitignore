@@ -3,6 +3,9 @@ data/
 # generated overlay — rebuild with `python scripts/score_citywide_edges.py`
 viewer/osm_scored.geojson
 
+# Vercel
+.vercel/
+
 # Python
 __pycache__/
 *.py[cod]
