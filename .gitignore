@@ -1,0 +1,21 @@
+# generated data — download with `python scripts/bootstrap.py`
+data/
+# generated overlay — rebuild with `python scripts/score_citywide_edges.py`
+viewer/osm_scored.geojson
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# temp / logs
+*.log
+/tmp/

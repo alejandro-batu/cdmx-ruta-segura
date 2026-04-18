@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Ruta Segura CDMX — cycling safety dashboard</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+  <style>
+    :root {
+      --c-bg: #f5f5f7;
+      --c-card: #fff;
+      --c-border: #e5e5ea;
+      --c-text: #1d1d1f;
+      --c-muted: #6e6e73;
+      --c-accent: #2b8a3e;
+      --c-accent-h: #238538;
+      --c-danger: #b10026;
+      --c-mid: #d9480f;
+      --c-ok: #2b8a3e;
+      --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.04);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: var(--c-text); background: var(--c-bg); }
+    .app { display: grid; grid-template-columns: 380px 1fr; height: 100vh; }
+    aside {
+      background: var(--c-card);
+      border-right: 1px solid var(--c-border);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    header {
+      padding: 14px 18px 12px; border-bottom: 1px solid var(--c-border);
+    }
+    header h1 { margin: 0; font-size: 17px; font-weight: 600; }
+    header .subtitle { margin-top: 2px; font-size: 12px; color: var(--c-muted); }
+    nav.tabs { display: flex; border-bottom: 1px solid var(--c-border); }
+    nav.tabs button {
+      flex: 1; padding: 10px 8px; border: 0; background: transparent;
+      font: inherit; font-size: 13px; color: var(--c-muted);
+      cursor: pointer; border-bottom: 2px solid transparent;
+    }
+    nav.tabs button.active { color: var(--c-text); border-bottom-color: var(--c-accent); font-weight: 600; }
+    nav.tabs button:hover { background: #fafafa; }
+    .tab-body { flex: 1; overflow: auto; padding: 14px 18px; }
+    .tab-body[hidden] { display: none; }
+
+    .field { margin-bottom: 12px; }
+    .field label { font-size: 12px; color: var(--c-muted); display: block; margin-bottom: 4px; font-weight: 500; }
+    .field input[type="text"] {
+      width: 100%; padding: 8px 10px; font: inherit; font-size: 13px;
+      border: 1px solid var(--c-border); border-radius: 6px; background: #fff;
+    }
+    .field input:focus { outline: none; border-color: var(--c-accent); box-shadow: 0 0 0 3px rgba(43,138,62,.15); }
+
+    .row { display: flex; gap: 8px; }
+    button.btn {
+      padding: 8px 14px; font: inherit; font-size: 13px; font-weight: 500;
+      border: 1px solid var(--c-border); border-radius: 6px; background: #fafafa;
+      cursor: pointer; color: var(--c-text);
+    }
+    button.btn:hover { background: #eee; }
+    button.btn.primary { background: var(--c-accent); color: white; border-color: var(--c-accent); }
+    button.btn.primary:hover { background: var(--c-accent-h); }
+    button.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    .hint { font-size: 11px; color: var(--c-muted); margin-top: 4px; }
+
+    .card {
+      background: #fafafa; border: 1px solid var(--c-border); border-radius: 8px;
+      padding: 12px 14px; margin-top: 14px;
+    }
+    .card h3 { margin: 0 0 10px; font-size: 13px; font-weight: 600; color: var(--c-muted); text-transform: uppercase; letter-spacing: .03em; }
+    .kpi { font-size: 32px; font-weight: 600; line-height: 1; }
+    .kpi.good { color: var(--c-ok); }
+    .kpi.mid { color: var(--c-mid); }
+    .kpi.bad { color: var(--c-danger); }
+    .kpi-label { font-size: 12px; color: var(--c-muted); margin-top: 4px; }
+    .stat-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; }
+    .stat-row span:last-child { font-weight: 500; color: var(--c-text); }
+
+    .bar { height: 8px; display: flex; border-radius: 4px; overflow: hidden; margin: 8px 0 6px; }
+    .bar > div { height: 100%; }
+    .badges { display: flex; gap: 4px; flex-wrap: wrap; }
+    .badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; color: white; font-weight: 500; }
+
+    .toggles { display: flex; flex-direction: column; gap: 8px; }
+    .toggle { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; background: #fafafa; border: 1px solid var(--c-border); border-radius: 6px; font-size: 13px; }
+    .toggle input[type="checkbox"] { margin-left: 8px; }
+
+    .about-section { margin-bottom: 14px; font-size: 13px; line-height: 1.55; }
+    .about-section h4 { margin: 0 0 6px; font-size: 13px; }
+    .about-section ul { margin: 4px 0; padding-left: 18px; }
+    .about-section li { margin: 3px 0; }
+    .about-section code { background: #eef; padding: 1px 5px; border-radius: 3px; font-size: 11px; }
+
+    main { position: relative; }
+    #map { position: absolute; inset: 0; }
+
+    .legend {
+      position: absolute; bottom: 16px; left: 16px;
+      background: var(--c-card); border-radius: 8px; padding: 10px 12px;
+      font-size: 11px; box-shadow: var(--shadow); border: 1px solid var(--c-border);
+    }
+    .legend b { display: block; margin-bottom: 4px; font-size: 12px; }
+    .swatch { display: inline-block; width: 14px; height: 4px; margin-right: 6px; vertical-align: middle; border-radius: 2px; }
+    .station-dot { display: inline-block; width: 8px; height: 8px; background: #1971c2; border-radius: 50%; margin-right: 6px; vertical-align: middle; border: 1.5px solid #fff; box-shadow: 0 0 2px rgba(0,0,0,.4); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside>
+      <header>
+        <h1>Ruta Segura CDMX</h1>
+        <div class="subtitle">Cycling safety scorer · 12.7k crashes · 677 Ecobici stations</div>
+      </header>
+      <nav class="tabs">
+        <button data-tab="route" class="active">Route</button>
+        <button data-tab="layers">Layers</button>
+        <button data-tab="stats">Stats</button>
+        <button data-tab="about">About</button>
+      </nav>
+
+      <div class="tab-body" data-tab="route">
+        <div class="hint">Type lat,lng — or click the map twice to pick start then end. Or paste a Google Maps URL.</div>
+        <div class="field" style="margin-top:10px">
+          <label>From (lat, lng)</label>
+          <input id="start" type="text" placeholder="19.415, -99.165" />
+        </div>
+        <div class="field">
+          <label>To (lat, lng)</label>
+          <input id="end" type="text" placeholder="19.425, -99.155" />
+        </div>
+        <div class="field">
+          <label>Or paste Google Maps link</label>
+          <input id="gmaps" type="text" placeholder="https://www.google.com/maps/dir/..." />
+        </div>
+        <div class="row">
+          <button id="go" class="btn primary" style="flex:1">Route &amp; score</button>
+          <button id="clear" class="btn">Clear</button>
+        </div>
+        <div id="summary" style="display:none"></div>
+      </div>
+
+      <div class="tab-body" data-tab="layers" hidden>
+        <div class="toggles">
+          <label class="toggle">
+            <span>Ecobici stations (677)</span>
+            <input id="tg-stations" type="checkbox" checked />
+          </label>
+          <label class="toggle">
+            <span>Scored OSM edges (demo area)</span>
+            <input id="tg-edges" type="checkbox" checked />
+          </label>
+          <label class="toggle">
+            <span>Crash heatmap (12.7k points)</span>
+            <input id="tg-heat" type="checkbox" />
+          </label>
+          <label class="toggle">
+            <span>Fatal crashes only</span>
+            <input id="tg-fatal" type="checkbox" />
+          </label>
+        </div>
+        <div class="hint" style="margin-top:12px">Scored edges cover a 3×3 km Roma/Condesa demo. Routing + scoring work anywhere in CDMX.</div>
+      </div>
+
+      <div class="tab-body" data-tab="stats" hidden>
+        <div id="kpis-loading" class="hint">Loading…</div>
+        <div id="kpis" style="display:none">
+          <div class="card">
+            <h3>Ecobici system</h3>
+            <div class="kpi good" id="kpi-trips">—</div>
+            <div class="kpi-label">total trips 2010–2024</div>
+            <div style="margin-top:14px">
+              <div class="stat-row"><span>Last 30 days</span><span id="kpi-30">—</span></div>
+              <div class="stat-row"><span>Daily avg (recent)</span><span id="kpi-daily">—</span></div>
+              <div class="stat-row"><span>Active stations</span><span id="kpi-stations">—</span></div>
+              <div class="stat-row"><span>Date range</span><span id="kpi-range">—</span></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Rider mix (all time)</h3>
+            <div id="kpi-gender"></div>
+          </div>
+
+          <div class="card">
+            <h3>Trips by year</h3>
+            <div id="kpi-years" style="font-size: 12px;"></div>
+          </div>
+
+          <div class="card">
+            <h3>Safety surface</h3>
+            <div class="stat-row"><span>SSC crashes 2018–2024</span><span>11,981</span></div>
+            <div class="stat-row"><span>FGJ crashes 2019</span><span>686</span></div>
+            <div class="stat-row"><span>Fatalities</span><span>143</span></div>
+            <div class="stat-row"><span>Bike infrastructure</span><span>580.7 km</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-body" data-tab="about" hidden>
+        <div class="about-section">
+          <h4>What this is</h4>
+          A cycling safety score for anywhere in CDMX. You give a start and end, we route a bike trip through brouter and score it against citywide crash data, fatality-weighted and reduced by any protected bike infrastructure you pass.
+        </div>
+        <div class="about-section">
+          <h4>Scoring, step by step</h4>
+          For each ~50 m of your route:
+          <ul>
+            <li><b>Cyclist-crash risk</b> — KDE of 12,667 cyclist crash points (150 m bw, fatals ×5), normalized to the P95 citywide.</li>
+            <li><b>Motor-vehicle risk</b> — same idea, KDE of all-vehicle crashes 2023–2024 (37k points). Blended at 30 %, so dangerous roads where few cyclists ride still raise the score.</li>
+            <li><b>Infra multiplier</b> — <code>×0.50</code> Ciclovía confinada · <code>×0.65–0.85</code> other bike infra · <b><code>×1.70</code> no bike lane within 30 m</b> (penalty).</li>
+            <li><b>Station multiplier</b> — continuous penalty from <code>×1.0</code> within 300 m of any Ecobici station up to <code>×1.50</code> when &gt;1.5 km away. Proxies "designed for cycling vs. not".</li>
+            <li><b>Score caps</b> — a point with no bike infra cannot score above 75 near Ecobici or 55 outside the footprint, no matter how low the crash density is. Prevents "no one rides here because it's unrideable" from looking safe.</li>
+            <li><b>Weighted risk</b> = blended risk × infra_mult × station_mult.</li>
+            <li><b>Score (0–100)</b> = <code>100 × (1 − clip(weighted, 0, 1))</code>.</li>
+            <li><b>Low-data warning</b> surfaces when &lt; 10 cyclist crashes fall in a 200 m buffer around the route.</li>
+          </ul>
+        </div>
+        <div class="about-section">
+          <h4>Known limits</h4>
+          <ul>
+            <li>No true ridership normalization — Ecobici doesn't publish OD pairs. Station proximity is a crude proxy.</li>
+            <li>brouter's profile picks the route; we don't yet <i>prefer</i> safer routes.</li>
+            <li>FGJ data frozen at 2019; SSC dominates 2020–2024.</li>
+            <li>Motor-vehicle KDE uses 2023–2024 only (~37k points). Earlier years available but not loaded.</li>
+            <li>KDE bandwidth (150 m), blend weight (0.3), and infra/station penalties are hand-tuned.</li>
+          </ul>
+        </div>
+        <div class="about-section">
+          <h4>Data sources</h4>
+          <ul>
+            <li><code>hechos-de-transito-ssc</code> — cyclist-filtered crashes 2018–2024</li>
+            <li><code>puntos-de-accidentes-de-ciclistas</code> — 2019 FGJ</li>
+            <li><code>infraestructura-vial-ciclista</code> — 580 km bike network</li>
+            <li><code>cicloestaciones-ecobici-nuevo-sistema</code> — 677 active stations</li>
+            <li><code>afluencia-diaria-del-sistema-ecobici</code> — system trip totals</li>
+            <li>OpenStreetMap · brouter.de · MapLibre GL</li>
+          </ul>
+        </div>
+      </div>
+    </aside>
+
+    <main>
+      <div id="map"></div>
+      <div class="legend">
+        <b>Safety score</b>
+        <div><span class="swatch" style="background:#b10026"></span>0–25 · dangerous</div>
+        <div><span class="swatch" style="background:#fc4e2a"></span>25–50 · risky</div>
+        <div><span class="swatch" style="background:#feb24c"></span>50–75 · ok</div>
+        <div><span class="swatch" style="background:#41ab5d"></span>75–100 · safe</div>
+        <div style="margin-top:6px"><span class="station-dot"></span>Ecobici station</div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script>
+    const SCORE_COLORS = [
+      'step', ['get', 'score'],
+      '#b10026', 25, '#fc4e2a', 50, '#feb24c', 75, '#41ab5d'
+    ];
+    const EDGE_COLORS = [
+      'step', ['get', 'safety_score'],
+      '#b10026', 25, '#fc4e2a', 50, '#feb24c', 75, '#41ab5d'
+    ];
+
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: 'https://tiles.openfreemap.org/styles/positron',
+      center: [-99.165, 19.415],
+      zoom: 13
+    });
+
+    const state = { pick: 0, startMarker: null, endMarker: null };
+
+    // ---------- tabs ----------
+    document.querySelectorAll('nav.tabs button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tab = btn.dataset.tab;
+        document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('active', b === btn));
+        document.querySelectorAll('.tab-body').forEach(b => b.hidden = b.dataset.tab !== tab);
+        if (tab === 'stats') loadKpis();
+      });
+    });
+
+    // ---------- map load ----------
+    map.on('load', async () => {
+      // demo edges (may not exist if server skipped)
+      try {
+        const r = await fetch('osm_scored.geojson');
+        if (r.ok) {
+          const data = await r.json();
+          map.addSource('edges', { type: 'geojson', data });
+          map.addLayer({
+            id: 'edges-bg', type: 'line', source: 'edges',
+            paint: {
+              'line-width': ['interpolate', ['linear'], ['zoom'], 12, 0.5, 14, 1.4, 16, 3, 18, 5],
+              'line-color': EDGE_COLORS,
+              'line-opacity': 0.55
+            }
+          });
+        }
+      } catch (e) {}
+
+      // stations
+      try {
+        const r = await fetch('/api/stations');
+        const data = await r.json();
+        map.addSource('stations', { type: 'geojson', data });
+        map.addLayer({
+          id: 'stations', type: 'circle', source: 'stations',
+          paint: {
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 2, 14, 4, 17, 7],
+            'circle-color': '#1971c2',
+            'circle-stroke-color': '#fff',
+            'circle-stroke-width': 1
+          }
+        });
+        map.on('click', 'stations', (e) => {
+          const p = e.features[0].properties;
+          new maplibregl.Popup()
+            .setLngLat(e.features[0].geometry.coordinates)
+            .setHTML(`<div style="font-size:12px"><b>Estación ${p.id}</b><br/>${p.calle_prin} × ${p.calle_secu}<br/><span style="color:#666">${p.colonia} · ${p.alcaldia}</span><br/><button onclick="useStation(${e.features[0].geometry.coordinates[1]}, ${e.features[0].geometry.coordinates[0]})">Use as start/end</button></div>`)
+            .addTo(map);
+        });
+      } catch (e) { console.warn('no stations', e); }
+
+      // route source
+      map.addSource('route', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+      map.addLayer({
+        id: 'route', type: 'line', source: 'route',
+        paint: { 'line-width': 6, 'line-color': SCORE_COLORS, 'line-opacity': 0.95 }
+      });
+
+      // crash heatmap (off by default)
+      try {
+        const r = await fetch('/api/crashes');
+        const data = await r.json();
+        map.addSource('crashes', { type: 'geojson', data });
+        map.addLayer({
+          id: 'crashes-heat', type: 'heatmap', source: 'crashes',
+          layout: { visibility: 'none' },
+          paint: {
+            'heatmap-weight': ['interpolate', ['linear'], ['get', 'fatal'], 0, 1, 1, 5],
+            'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 10, 1, 16, 3],
+            'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 10, 10, 16, 30],
+            'heatmap-opacity': 0.7,
+            'heatmap-color': [
+              'interpolate', ['linear'], ['heatmap-density'],
+              0, 'rgba(0,0,0,0)', 0.2, '#feb24c', 0.4, '#fd8d3c',
+              0.6, '#fc4e2a', 0.8, '#e31a1c', 1, '#b10026'
+            ]
+          }
+        });
+      } catch (e) {}
+    });
+
+    // ---------- layer toggles ----------
+    function setVis(id, on) { if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'); }
+    document.getElementById('tg-stations').addEventListener('change', (e) => setVis('stations', e.target.checked));
+    document.getElementById('tg-edges').addEventListener('change', (e) => setVis('edges-bg', e.target.checked));
+    document.getElementById('tg-heat').addEventListener('change', (e) => setVis('crashes-heat', e.target.checked));
+    document.getElementById('tg-fatal').addEventListener('change', (e) => {
+      if (map.getLayer('crashes-heat')) {
+        map.setFilter('crashes-heat', e.target.checked ? ['>=', ['get', 'fatal'], 1] : null);
+      }
+    });
+
+    // ---------- map click picks start/end ----------
+    map.on('click', (e) => {
+      if (e.originalEvent.defaultPrevented) return;
+      if (map.queryRenderedFeatures(e.point, { layers: ['stations'] }).length) return; // let popup handle
+      const ll = `${e.lngLat.lat.toFixed(6)}, ${e.lngLat.lng.toFixed(6)}`;
+      if (state.pick === 0) {
+        document.getElementById('start').value = ll;
+        state.startMarker?.remove();
+        state.startMarker = new maplibregl.Marker({ color: '#1971c2' }).setLngLat(e.lngLat).addTo(map);
+        state.pick = 1;
+      } else {
+        document.getElementById('end').value = ll;
+        state.endMarker?.remove();
+        state.endMarker = new maplibregl.Marker({ color: '#b10026' }).setLngLat(e.lngLat).addTo(map);
+        state.pick = 0;
+      }
+    });
+
+    // click-on-station shortcut
+    window.useStation = (lat, lng) => {
+      const v = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+      const s = document.getElementById('start');
+      if (!s.value) { s.value = v; state.pick = 1; return; }
+      document.getElementById('end').value = v; state.pick = 0;
+    };
+
+    // ---------- Google Maps URL parse ----------
+    // Google /maps/dir URLs encode origin/destination as !1d<lng>!2d<lat> pairs
+    // inside the `data=` block. Fall back to "lat,lng/lat,lng" for simpler URLs.
+    function extractFromGmaps(url) {
+      const pairs = [];
+      const re = /!1d(-?\d+\.\d+)!2d(-?\d+\.\d+)/g;
+      let m;
+      while ((m = re.exec(url)) !== null) {
+        pairs.push({ lng: parseFloat(m[1]), lat: parseFloat(m[2]) });
+      }
+      if (pairs.length >= 2) {
+        return {
+          start: `${pairs[0].lat.toFixed(6)}, ${pairs[0].lng.toFixed(6)}`,
+          end: `${pairs[pairs.length - 1].lat.toFixed(6)}, ${pairs[pairs.length - 1].lng.toFixed(6)}`,
+        };
+      }
+      // fallback: /maps/dir/LAT,LNG/LAT,LNG/
+      const simple = url.match(/\/dir\/(-?\d+\.\d+),(-?\d+\.\d+)\/(-?\d+\.\d+),(-?\d+\.\d+)/);
+      if (simple) return { start: `${simple[1]}, ${simple[2]}`, end: `${simple[3]}, ${simple[4]}` };
+      return null;
+    }
+
+    async function geocodeIfAddress(url) {
+      // when URL has address-style path segments but no coords, hit Nominatim for each
+      const m = url.match(/\/maps\/dir\/([^/@]+)\/([^/@]+)/);
+      if (!m) return null;
+      const q1 = decodeURIComponent(m[1]).replace(/\+/g, ' ');
+      const q2 = decodeURIComponent(m[2]).replace(/\+/g, ' ');
+      const fetchOne = async (q) => {
+        const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=mx&viewbox=-99.4,19.7,-98.9,19.0&bounded=1&q=${encodeURIComponent(q)}`,
+          { headers: { 'Accept-Language': 'es-MX' } });
+        const j = await r.json();
+        if (!j.length) throw new Error(`no geocode for "${q}"`);
+        return `${parseFloat(j[0].lat).toFixed(6)}, ${parseFloat(j[0].lon).toFixed(6)}`;
+      };
+      return { start: await fetchOne(q1), end: await fetchOne(q2) };
+    }
+
+    document.getElementById('gmaps').addEventListener('input', async (e) => {
+      const url = e.target.value;
+      if (!url) return;
+      const parsed = extractFromGmaps(url);
+      if (parsed) {
+        document.getElementById('start').value = parsed.start;
+        document.getElementById('end').value = parsed.end;
+        return;
+      }
+      // address-only fallback (debounced by the simple check above)
+      if (!url.includes('/maps/dir/')) return;
+      try {
+        const g = await geocodeIfAddress(url);
+        if (g) {
+          document.getElementById('start').value = g.start;
+          document.getElementById('end').value = g.end;
+        }
+      } catch (err) {
+        console.warn('geocode failed', err);
+      }
+    });
+
+    // ---------- clear ----------
+    document.getElementById('clear').addEventListener('click', () => {
+      map.getSource('route')?.setData({ type: 'FeatureCollection', features: [] });
+      state.startMarker?.remove(); state.endMarker?.remove();
+      state.startMarker = state.endMarker = null; state.pick = 0;
+      ['start', 'end', 'gmaps'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('summary').style.display = 'none';
+    });
+
+    // ---------- run route ----------
+    document.getElementById('go').addEventListener('click', async () => {
+      const s = document.getElementById('start').value.trim();
+      const t = document.getElementById('end').value.trim();
+      if (!s || !t) { alert('Need start and end (lat, lng).'); return; }
+      const btn = document.getElementById('go');
+      btn.disabled = true; btn.textContent = 'Routing…';
+      try {
+        const r = await fetch(`/api/route?start=${encodeURIComponent(s)}&end=${encodeURIComponent(t)}`);
+        if (!r.ok) throw new Error(await r.text());
+        const data = await r.json();
+        renderRoute(data);
+      } catch (e) {
+        alert('Route failed: ' + e.message);
+      } finally {
+        btn.disabled = false; btn.textContent = 'Route & score';
+      }
+    });
+
+    function renderRoute(data) {
+      const feats = [];
+      const s = data.samples;
+      for (let i = 0; i < s.length - 1; i++) {
+        feats.push({
+          type: 'Feature',
+          properties: { score: s[i].score },
+          geometry: { type: 'LineString', coordinates: [[s[i].lon, s[i].lat], [s[i+1].lon, s[i+1].lat]] }
+        });
+      }
+      map.getSource('route').setData({ type: 'FeatureCollection', features: feats });
+      const lons = s.map(p => p.lon), lats = s.map(p => p.lat);
+      map.fitBounds([[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]],
+                    { padding: 80, duration: 500 });
+
+      const sum = data.summary;
+      const score = Math.round(sum.mean_score);
+      const klass = score >= 75 ? 'good' : score >= 50 ? 'mid' : 'bad';
+      const bar = `<div class="bar">
+        <div style="width:${sum.pct_safe.toFixed(1)}%;background:#41ab5d"></div>
+        <div style="width:${sum.pct_ok.toFixed(1)}%;background:#feb24c"></div>
+        <div style="width:${sum.pct_risky.toFixed(1)}%;background:#fc4e2a"></div>
+        <div style="width:${sum.pct_dangerous.toFixed(1)}%;background:#b10026"></div>
+      </div>`;
+      const warn = sum.low_data_warning
+        ? `<div style="margin-top:10px; padding: 8px 10px; background:#fff4e6; border:1px solid #ffc078; color:#8a4f00; border-radius:6px; font-size:12px; line-height:1.4;">
+             ⚠ <b>Low cyclist-data zone.</b> Only ${sum.cyclist_crashes_near_route} cyclist crashes in a 200 m buffer around this route (${sum.cyclist_crashes_per_km.toFixed(1)}/km).
+             The score leans on motor-vehicle crash density and infra/station penalties — treat it as indicative, not precise.
+           </div>`
+        : '';
+      document.getElementById('summary').innerHTML = `
+        <div class="card">
+          <h3>Route safety</h3>
+          <div class="kpi ${klass}">${score}</div>
+          <div class="kpi-label">out of 100</div>
+          <div style="margin-top:12px">
+            <div class="stat-row"><span>Distance</span><span>${(sum.total_m/1000).toFixed(2)} km</span></div>
+            <div class="stat-row"><span>Time estimate</span><span>${Math.round(data.meta.total_time_s/60)} min</span></div>
+            <div class="stat-row"><span>Worst 100 m avg</span><span>${Math.round(sum.worst_100m_score)}</span></div>
+            <div class="stat-row"><span>On bike infrastructure</span><span>${sum.pct_with_infra.toFixed(0)}%</span></div>
+            <div class="stat-row"><span>In Ecobici footprint</span><span>${sum.pct_in_ecobici_footprint.toFixed(0)}%</span></div>
+            <div class="stat-row"><span>Cyclist crashes nearby</span><span>${sum.cyclist_crashes_near_route} (${sum.cyclist_crashes_per_km.toFixed(1)}/km)</span></div>
+          </div>
+          ${bar}
+          <div class="badges">
+            <span class="badge" style="background:#b10026">${sum.pct_dangerous.toFixed(0)}% dangerous</span>
+            <span class="badge" style="background:#fc4e2a">${sum.pct_risky.toFixed(0)}% risky</span>
+            <span class="badge" style="background:#feb24c">${sum.pct_ok.toFixed(0)}% ok</span>
+            <span class="badge" style="background:#41ab5d">${sum.pct_safe.toFixed(0)}% safe</span>
+          </div>
+          ${warn}
+        </div>`;
+      document.getElementById('summary').style.display = 'block';
+    }
+
+    // ---------- KPIs tab ----------
+    let kpisLoaded = false;
+    async function loadKpis() {
+      if (kpisLoaded) return;
+      try {
+        const r = await fetch('/api/kpis');
+        const k = await r.json();
+        document.getElementById('kpi-trips').textContent = (k.total_trips_all_time/1e6).toFixed(1) + 'M';
+        document.getElementById('kpi-30').textContent = (k.trips_last_30_days/1e6).toFixed(2) + 'M';
+        document.getElementById('kpi-daily').textContent = k.avg_daily_last_30.toLocaleString();
+        document.getElementById('kpi-stations').textContent = k.active_stations + ' / ' + k.stations_total;
+        document.getElementById('kpi-range').textContent = k.date_first + ' → ' + k.date_last;
+
+        const totalG = Object.values(k.by_gender).reduce((a,b)=>a+b, 0);
+        const gHtml = Object.entries(k.by_gender).map(([g, v]) => {
+          const pct = (v/totalG*100).toFixed(1);
+          return `<div class="stat-row"><span>${g}</span><span>${pct}% (${(v/1e6).toFixed(1)}M)</span></div>`;
+        }).join('');
+        document.getElementById('kpi-gender').innerHTML = gHtml;
+
+        const years = Object.entries(k.by_year).sort(([a],[b]) => +a-+b);
+        const max = Math.max(...years.map(([,v]) => v));
+        const yHtml = years.map(([y, v]) => {
+          const pct = v/max*100;
+          return `<div style="display:flex; align-items:center; gap:6px; margin: 2px 0;">
+            <span style="width: 36px; color:#666">${y}</span>
+            <div style="flex:1; background:#eee; height:8px; border-radius:3px; overflow:hidden">
+              <div style="width:${pct}%; height:100%; background:var(--c-accent)"></div>
+            </div>
+            <span style="width: 50px; text-align:right; font-size: 11px">${(v/1e6).toFixed(1)}M</span>
+          </div>`;
+        }).join('');
+        document.getElementById('kpi-years').innerHTML = yHtml;
+
+        document.getElementById('kpis-loading').style.display = 'none';
+        document.getElementById('kpis').style.display = 'block';
+        kpisLoaded = true;
+      } catch (e) {
+        document.getElementById('kpis-loading').textContent = 'Failed to load stats.';
+      }
+    }
+  </script>
+</body>
+</html>
