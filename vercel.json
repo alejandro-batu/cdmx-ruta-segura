@@ -10,7 +10,13 @@
       ]
     },
     {
-      "source": "/assets/(.*\\.(geojson|json))",
+      "source": "/assets/(.*\\.geojson)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=3600" }
+      ]
+    },
+    {
+      "source": "/assets/(.*\\.json)",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=3600" }
       ]
