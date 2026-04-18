@@ -83,6 +83,28 @@
     .toast { position: absolute; top: 16px; right: 16px; background: #fff4e6; border: 1px solid #ffc078; color: #8a4f00; padding: 10px 14px; border-radius: 8px; font-size: 12px; box-shadow: var(--shadow); max-width: 300px; display: none; }
 
     .info-link { font-size: 11px; color: var(--c-accent); cursor: pointer; text-decoration: underline; margin-top: 6px; display: inline-block; }
+
+    details.info-card {
+      background: #f0f7ff; border: 1px solid #c6e0ff; border-radius: 8px;
+      padding: 10px 14px; margin-bottom: 14px; font-size: 12.5px; line-height: 1.55;
+    }
+    details.info-card > summary {
+      cursor: pointer; font-weight: 600; color: #1971c2; list-style: none;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    details.info-card > summary::-webkit-details-marker { display: none; }
+    details.info-card > summary::after { content: "▸"; transition: transform .2s; color: #1971c2; font-size: 10px; }
+    details.info-card[open] > summary::after { transform: rotate(90deg); }
+    details.info-card .body { margin-top: 8px; color: #234; }
+    details.info-card .body ul { margin: 4px 0 6px 16px; padding: 0; }
+    details.info-card .body ul li { margin: 2px 0; }
+    details.info-card .body code { background: #dbeafe; padding: 1px 4px; border-radius: 3px; font-size: 11px; font-family: "SF Mono", Menlo, monospace; }
+    details.info-card .dataset-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+    details.info-card .dataset-chips a {
+      font-size: 11px; background: #fff; border: 1px solid #c6e0ff;
+      padding: 2px 8px; border-radius: 10px; color: #1971c2; text-decoration: none;
+    }
+    details.info-card .dataset-chips a:hover { background: #e7f1ff; }
   </style>
 </head>
 <body>
@@ -100,6 +122,27 @@
       </nav>
 
       <div class="tab-body" data-tab="route">
+        <details class="info-card" open>
+          <summary>How we score your route</summary>
+          <div class="body">
+            For every ~50 m of your route we blend two crash-density surfaces, multiply by a bike-infrastructure factor, and penalize distance to Ecobici.
+            <ul>
+              <li><b>Crash risk</b>: <code>0.7 ×</code> cyclist KDE + <code>0.3 ×</code> all-vehicle KDE (fatals weighted 5×, 150 m bandwidth).</li>
+              <li><b>Infra</b>: ×0.50 Ciclovía confinada · ×0.65–0.85 other bike infra · <b>×1.70 if no bike lane within 30 m</b>.</li>
+              <li><b>Ecobici</b>: ×1.0 within 300 m of a station, ramping to ×1.5 beyond 1.5 km.</li>
+              <li><b>Caps</b>: no infra + far from stations → max score 55 (unrideable zones can't look safe).</li>
+            </ul>
+            Built from these CDMX open datasets (all <a href="https://datos.cdmx.gob.mx" target="_blank" rel="noopener">datos.cdmx.gob.mx</a>):
+            <div class="dataset-chips">
+              <a href="https://datos.cdmx.gob.mx/dataset/hechos-de-transito-registrados-por-la-ssc-2024-serie-de-datos-ampliada-no-comparativa" target="_blank" rel="noopener">12.7k cyclist crashes 2018–24</a>
+              <a href="https://datos.cdmx.gob.mx/dataset/hechos-de-transito-reportados-por-ssc-base-ampliada-no-comparativa" target="_blank" rel="noopener">165k all-vehicle crashes</a>
+              <a href="https://datos.cdmx.gob.mx/dataset/infraestructura-vial-ciclista" target="_blank" rel="noopener">580 km bike infra</a>
+              <a href="https://datos.cdmx.gob.mx/dataset/cicloestaciones-ecobici-nuevo-sistema" target="_blank" rel="noopener">677 Ecobici stations</a>
+              <a href="https://datos.cdmx.gob.mx/dataset/puntos-de-accidentes-de-ciclistas" target="_blank" rel="noopener">FGJ 2019 points</a>
+            </div>
+            <div style="margin-top: 8px; font-size: 11px; color: #5c6470;">Routing via <a href="https://brouter.de" target="_blank" rel="noopener">brouter</a>. Full methodology and limits: <a href="#" onclick="document.querySelector('nav.tabs button[data-tab=about]').click(); return false;">About tab →</a></div>
+          </div>
+        </details>
         <div class="hint">Type lat,lng — or click the map twice. Or paste a Google Maps URL and we'll extract the coordinates.</div>
         <div class="field" style="margin-top:10px">
           <label>From (lat, lng)</label>
